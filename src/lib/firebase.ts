@@ -1,8 +1,21 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+// Agregamos de vuelta todas las funciones que la app necesita:
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  serverTimestamp, 
+  collection, 
+  getDocs, 
+  addDoc, 
+  deleteDoc, 
+  query, 
+  orderBy 
+} from 'firebase/firestore';
 
-// 1. Configuración limpia usando SOLO variables de entorno
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -10,18 +23,20 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  // Usamos el nombre que configuraste en Vercel
   databaseId: import.meta.env.VITE_FIRESTORE_DATABASE_ID 
 };
 
-// 2. Inicializar la App
 const app = initializeApp(firebaseConfig);
 
-// 3. LA CORRECCIÓN CLAVE: Usar la propiedad correcta
 export const db = getFirestore(app, firebaseConfig.databaseId); 
-
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Exportamos también las funciones de Firestore para que el resto de la app las vea
+export { 
+  doc, getDoc, setDoc, updateDoc, serverTimestamp, 
+  collection, getDocs, addDoc, deleteDoc, query, orderBy 
+};
 
 export async function testConnection() {
   try {
