@@ -5,8 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Search, Menu, X, Plus, Minus, ArrowRight, User, Settings, Edit2, Trash2 } from 'lucide-react';
-import { auth, googleProvider, getUserProfile, ensureUserProfile, updateUserProfile, UserProfile, getProducts, addProduct, updateProduct, deleteProduct, bootstrapProductsIfNeeded, checkIsAdmin, AppProduct } from './lib/firebase';
+import { ShoppingBag, Search, Menu, X, Plus, Minus, ArrowRight, User, Settings, Edit2, Trash2, Filter, Upload } from 'lucide-react';
+import { auth, googleProvider, getUserProfile, ensureUserProfile, updateUserProfile, UserProfile, getProducts, addProduct, updateProduct, deleteProduct, bootstrapProductsIfNeeded, checkIsAdmin, AppProduct, uploadImage } from './lib/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
 
 // --- Types ---
@@ -48,9 +48,14 @@ export default function App() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
-  // Navbar state
-  const [hoveredNavItem, setHoveredNavItem] = useState<string | null>(null);
-  const navItems = ['Colección', 'Hombre', 'Mujer', 'Accesorios'];
+  // Category state
+  const categories = ['Todo', 'Mujer', 'Hombre', 'Unisex', 'Accesorios'];
+  const types = ['Todo', 'Remera', 'Pantalón', 'Abrigo', 'Vestido', 'Calzado', 'Cartera', 'Anteojos'];
+  
+  const [activeCategory, setActiveCategory] = useState('Todo');
+  const [activeType, setActiveType] = useState('Todo');
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -241,29 +246,8 @@ export default function App() {
           </a>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center space-x-1" onMouseLeave={() => setHoveredNavItem(null)}>
-            {navItems.map(item => (
-              <a 
-                key={item} 
-                href="#" 
-                onMouseEnter={() => setHoveredNavItem(item)}
-                className={`relative px-4 py-2 text-sm font-medium transition-colors duration-300 rounded-full ${
-                  isScrolled ? 'text-stone-600 hover:text-stone-900' : 'text-stone-200 hover:text-white'
-                }`}
-              >
-                <span className="relative z-10">{item}</span>
-                {hoveredNavItem === item && (
-                  <motion.div
-                    layoutId="nav-hover-pill"
-                    className={`absolute inset-0 rounded-full ${isScrolled ? 'bg-stone-100' : 'bg-white/10 backdrop-blur-sm'}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                  />
-                )}
-              </a>
-            ))}
+          <nav className="hidden md:flex items-center space-x-1">
+            {/* Nav categories removed from header and moved to product layout */}
           </nav>
 
           {/* Actions */}
@@ -326,21 +310,121 @@ export default function App() {
                 </button>
               </div>
               <nav className="flex flex-col space-y-6 flex-grow">
-                {['Inicio', 'Colección', 'Hombre', 'Mujer', 'Accesorios'].map(item => (
-                  <a 
+                {categories.map(item => (
+                  <button 
                     key={item} 
-                    href="#" 
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="text-2xl font-display font-medium text-stone-900 hover:text-stone-500 transition-colors"
+                    onClick={() => {
+                      setActiveCategory(item);
+                      setIsMobileMenuOpen(false);
+                      // Scroll to products
+                      document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-2xl font-display font-medium text-stone-900 hover:text-stone-500 transition-colors text-left"
                   >
                     {item}
-                  </a>
+                  </button>
                 ))}
               </nav>
               <div className="pt-8 border-t border-stone-200">
                 <a href="#" className="flex items-center text-sm font-medium text-stone-500 hover:text-stone-900">
                   <Search className="w-4 h-4 mr-3" /> Buscar
                 </a>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+        {/* Mobile Filter Drawer */}
+        <AnimatePresence>
+        {isFilterMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+              onClick={() => setIsFilterMenuOpen(false)}
+            />
+            <motion.div 
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 left-0 h-full w-[85%] max-w-sm bg-white z-50 flex flex-col shadow-2xl"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-stone-900" />
+                  <span className="font-display font-medium text-lg text-stone-900">Filtros</span>
+                </div>
+                <button onClick={() => setIsFilterMenuOpen(false)}>
+                  <X className="w-6 h-6 text-stone-500" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-10">
+                {/* Reset Filters Mobile */}
+                {(activeCategory !== 'Todo' || activeType !== 'Todo') && (
+                  <button 
+                    onClick={() => {
+                      setActiveCategory('Todo');
+                      setActiveType('Todo');
+                      setIsFilterMenuOpen(false);
+                    }}
+                    className="w-full text-center text-sm font-semibold uppercase tracking-widest text-stone-900 border border-stone-900 py-3 hover:bg-stone-900 hover:text-white transition-colors"
+                  >
+                    Borrar Filtros
+                  </button>
+                )}
+
+                {/* Gender Mobile */}
+                <div>
+                  <h3 className="font-display font-medium text-lg mb-5 text-stone-900">Género</h3>
+                  <ul className="space-y-4">
+                    {categories.map(cat => (
+                      <li key={cat}>
+                        <button 
+                          onClick={() => setActiveCategory(cat)}
+                          className={`text-base flex items-center gap-4 transition-colors ${activeCategory === cat ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                        >
+                          <div className={`w-5 h-5 rounded-sm border flex items-center justify-center transition-colors ${activeCategory === cat ? 'border-stone-900 bg-stone-900' : 'border-stone-300 bg-transparent'}`}>
+                            {activeCategory === cat && <div className="w-2 h-2 bg-white rounded-sm" />}
+                          </div>
+                          {cat}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {/* Type Mobile */}
+                <div>
+                  <h3 className="font-display font-medium text-lg mb-5 text-stone-900">Tipo de Prenda</h3>
+                  <ul className="space-y-4">
+                    {types.map(t => (
+                      <li key={t}>
+                        <button 
+                          onClick={() => setActiveType(t)}
+                          className={`text-base flex items-center gap-4 transition-colors ${activeType === t ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                        >
+                          <div className={`w-5 h-5 rounded-sm border flex items-center justify-center transition-colors ${activeType === t ? 'border-stone-900 bg-stone-900' : 'border-stone-300 bg-transparent'}`}>
+                            {activeType === t && <div className="w-2 h-2 bg-white rounded-sm" />}
+                          </div>
+                          {t}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="p-6 border-t border-stone-100">
+                <button 
+                  onClick={() => setIsFilterMenuOpen(false)}
+                  className="w-full bg-stone-900 text-white py-4 font-medium"
+                >
+                  Ver Resultados
+                </button>
               </div>
             </motion.div>
           </>
@@ -487,21 +571,94 @@ export default function App() {
       </section>
 
       {/* Featured Products */}
-      <section className="py-24 max-w-7xl mx-auto px-6 md:px-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+      <section id="productos" className="py-24 max-w-7xl mx-auto px-6 md:px-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6 border-b border-stone-200 pb-8">
           <div className="max-w-2xl">
-            <h2 className="text-3xl md:text-4xl font-display font-medium tracking-tight mb-4">Piezas Únicas</h2>
-            <p className="text-stone-500 text-lg">Nuestros tesoros escondidos más codiciados. Ropa de segunda mano en perfecto estado.</p>
+            <h2 className="text-3xl md:text-4xl font-display font-medium tracking-tight mb-4">Catálogo Completo</h2>
+            <p className="text-stone-500 text-lg">Las mejores piezas de moda circular al alcance de tu mano.</p>
           </div>
-          <a href="#" className="flex items-center text-stone-900 font-medium hover:opacity-70 transition-opacity whitespace-nowrap">
-            Ver todo <ArrowRight className="w-5 h-5 ml-2" />
-          </a>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
-          {isLoadingProducts ? (
-            <div className="col-span-full py-12 text-center text-stone-500">Cargando colección...</div>
-          ) : products.map((product, index) => (
+        {/* Mobile Filter Toggle */}
+        <div className="md:hidden mb-8">
+          <button 
+            onClick={() => setIsFilterMenuOpen(true)}
+            className="w-full flex items-center justify-center gap-2 border border-stone-300 py-3 text-sm font-medium hover:bg-stone-100 transition-colors"
+          >
+            <Filter className="w-4 h-4" /> 
+            Filtrar Productos {(activeCategory !== 'Todo' || activeType !== 'Todo') && '(Activos)'}
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-12">
+          {/* Desktop Sidebar Filters */}
+          <aside className="hidden md:block w-56 flex-shrink-0">
+            <div className="sticky top-28 space-y-10">
+              
+              {/* Reset Filters */}
+              {(activeCategory !== 'Todo' || activeType !== 'Todo') && (
+                <button 
+                  onClick={() => {
+                    setActiveCategory('Todo');
+                    setActiveType('Todo');
+                  }}
+                  className="text-xs font-semibold uppercase tracking-widest text-stone-900 border-b border-stone-900 pb-1 hover:text-stone-500 transition-colors"
+                >
+                  Limpiar Filtros
+                </button>
+              )}
+
+              {/* Gender Sidebar */}
+              <div>
+                <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Género</h3>
+                <ul className="space-y-3">
+                  {categories.map(cat => (
+                    <li key={cat}>
+                      <button 
+                        onClick={() => setActiveCategory(cat)}
+                        className={`text-sm flex items-center gap-3 transition-colors ${activeCategory === cat ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${activeCategory === cat ? 'border-stone-900 bg-stone-900' : 'border-stone-300 bg-transparent'}`}>
+                          {activeCategory === cat && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
+                        </div>
+                        {cat}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Type Sidebar */}
+              <div>
+                <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Tipo de Prenda</h3>
+                <ul className="space-y-3">
+                  {types.map(t => (
+                    <li key={t}>
+                      <button 
+                        onClick={() => setActiveType(t)}
+                        className={`text-sm flex items-center gap-3 transition-colors ${activeType === t ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${activeType === t ? 'border-stone-900 bg-stone-900' : 'border-stone-300 bg-transparent'}`}>
+                          {activeType === t && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
+                        </div>
+                        {t}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </aside>
+
+          {/* Product Grid Area */}
+          <div className="flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+              {isLoadingProducts ? (
+                <div className="col-span-full py-12 text-center text-stone-500">Cargando colección...</div>
+              ) : products
+                  .filter(p => activeCategory === 'Todo' || p.category === activeCategory)
+                  .filter(p => activeType === 'Todo' || p.type === activeType)
+                  .map((product, index) => (
             <motion.div 
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -549,12 +706,22 @@ export default function App() {
               <div className="flex justify-between items-start pt-1">
                 <div>
                   <h3 className="font-medium text-stone-900 text-base">{product.name}</h3>
-                  <p className="text-sm text-stone-500 mt-1">{product.category}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <p className="text-xs text-stone-500 uppercase tracking-wider">{product.category}</p>
+                    {product.type && (
+                      <>
+                        <span className="text-stone-300 mx-1">•</span>
+                        <p className="text-xs text-stone-500 uppercase tracking-wider">{product.type}</p>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <span className="font-medium text-stone-900">${product.price.toLocaleString('es-AR')}</span>
               </div>
             </motion.div>
           ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -571,8 +738,8 @@ export default function App() {
               <p className="text-stone-600">Hacemos una curaduría especial de tesoros escondidos para que tu estilo sea verdaderamente único.</p>
             </div>
             <div className="pt-8 md:pt-0 md:pl-12">
-              <h4 className="font-display font-medium text-xl mb-3">Envíos a todo el país</h4>
-              <p className="text-stone-600">Despachamos de forma segura tu pedido a cualquier lugar de Argentina.</p>
+              <h4 className="font-display font-medium text-xl mb-3">Envíos por Uber</h4>
+              <p className="text-stone-600">Hacemos envíos rápidos y seguros en el día dentro de Córdoba Capital por Uber Flash.</p>
             </div>
           </div>
         </div>
@@ -860,21 +1027,91 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-stone-500 mb-1">Categoría</label>
-                      <input 
-                        type="text" 
-                        value={editingProduct.category || ''} 
+                      <label className="block text-sm text-stone-500 mb-1">Categoría (Género)</label>
+                      <select
+                        value={editingProduct.category || ''}
                         onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
-                        className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500"
-                      />
+                        className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500 bg-white"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {categories.filter(c => c !== 'Todo').map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
                     </div>
                     <div>
-                      <label className="block text-sm text-stone-500 mb-1">URLs Imágenes (separadas por coma)</label>
+                      <label className="block text-sm text-stone-500 mb-1">Tipo de Prenda</label>
+                      <select
+                        value={editingProduct.type || ''}
+                        onChange={e => setEditingProduct({...editingProduct, type: e.target.value})}
+                        className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500 bg-white"
+                      >
+                        <option value="">Seleccionar...</option>
+                        {types.filter(t => t !== 'Todo').map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-500 mb-1">Imágenes del Producto</label>
+                      
+                      <div className="flex gap-2 overflow-x-auto mb-2">
+                        {editingProduct.rawImages?.split(',').map(s => s.trim()).filter(Boolean).map((img, i) => (
+                          <div key={i} className="relative w-16 h-16 shrink-0 border border-stone-200 rounded overflow-hidden">
+                            <img src={img} className="w-full h-full object-cover" alt={`Preview ${i}`} />
+                            <button
+                              onClick={() => {
+                                const urls = editingProduct.rawImages?.split(',').map(s => s.trim()).filter(Boolean) || [];
+                                const newUrls = urls.filter((_, index) => index !== i);
+                                setEditingProduct({...editingProduct, rawImages: newUrls.join(',')});
+                              }}
+                              className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl hover:bg-red-600 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {isUploadingImage && (
+                          <div className="w-16 h-16 shrink-0 border border-stone-200 rounded flex items-center justify-center bg-stone-50 text-stone-400">
+                            <div className="animate-spin w-4 h-4 border-2 border-stone-400 border-t-transparent rounded-full" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative mb-2">
+                        <input 
+                          type="file" 
+                          multiple
+                          accept="image/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={async (e) => {
+                            if (!e.target.files?.length) return;
+                            setIsUploadingImage(true);
+                            const currentUrls = editingProduct.rawImages?.split(',').map(s => s.trim()).filter(Boolean) || [];
+                            const files = Array.from(e.target.files) as File[];
+                            try {
+                              for (const file of files) {
+                                const url = await uploadImage(file);
+                                currentUrls.push(url);
+                              }
+                              setEditingProduct({...editingProduct, rawImages: currentUrls.join(',')});
+                            } catch (err) {
+                              console.error(err);
+                              alert("Error: " + (err instanceof Error ? err.message : "No se pudo subir a ImgBB. Revisá la API KEY en tu archivo .env"));
+                            } finally {
+                              setIsUploadingImage(false);
+                            }
+                          }}
+                        />
+                        <div className="w-full border border-dashed border-stone-300 p-4 text-center text-sm text-stone-500 rounded hover:bg-stone-50 transition-colors">
+                          <Upload className="w-5 h-5 mx-auto mb-1 opacity-50" />
+                          Hacé clic o arrastrá para subir fotos desde tu dispositivo
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-stone-400 mb-1">También podés pegar links manualmente si preferís:</p>
                       <input 
                         type="text" 
                         value={editingProduct.rawImages ?? ''} 
                         onChange={e => setEditingProduct({ ...editingProduct, rawImages: e.target.value })}
                         className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500"
+                        placeholder="https://..."
                       />
                     </div>
                     <div>
@@ -1074,7 +1311,15 @@ export default function App() {
 
               {/* Product Info */}
               <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col">
-                <span className="text-sm uppercase tracking-widest text-stone-500 font-medium mb-2">{quickViewProduct.category}</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm uppercase tracking-widest text-stone-500 font-medium">{quickViewProduct.category}</span>
+                  {quickViewProduct.type && (
+                    <>
+                      <span className="text-stone-300">•</span>
+                      <span className="text-sm uppercase tracking-widest text-stone-500 font-medium">{quickViewProduct.type}</span>
+                    </>
+                  )}
+                </div>
                 <h2 className="text-3xl font-display font-medium mb-4">{quickViewProduct.name}</h2>
                 <span className="text-2xl font-light mb-8">${quickViewProduct.price.toLocaleString('es-AR')}</span>
                 
