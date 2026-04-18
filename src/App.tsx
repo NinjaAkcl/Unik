@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Search, Menu, X, Plus, Minus, ArrowRight, User, Settings, Edit2, Trash2, Filter, Upload } from 'lucide-react';
+import { ShoppingBag, Search, Menu, X, Plus, Minus, ArrowRight, User, Settings, Edit2, Trash2, Filter, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import { auth, googleProvider, getUserProfile, ensureUserProfile, updateUserProfile, UserProfile, getProducts, addProduct, updateProduct, deleteProduct, bootstrapProductsIfNeeded, checkIsAdmin, AppProduct, uploadImage } from './lib/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
 
@@ -56,14 +56,34 @@ export default function App() {
   const [activeType, setActiveType] = useState('Todo');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 9;
+
+  // Derive filtered and paginated products
+  const filteredProducts = products
+    .filter(p => activeCategory === 'Todo' || p.category === activeCategory)
+    .filter(p => activeType === 'Todo' || p.type === activeType);
+  
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+  const currentProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, activeType]);
 
   useEffect(() => {
     const fetchProducts = async () => {
       setIsLoadingProducts(true);
       await bootstrapProductsIfNeeded();
-      const p = await getProducts();
-      setProducts(p);
-      setIsLoadingProducts(false);
+      try {
+        const p = await getProducts();
+        setProducts(p);
+      } catch (err) {
+        console.error("Error cargando productos. Posible falta de permisos:", err);
+      } finally {
+        setIsLoadingProducts(false);
+      }
     };
     fetchProducts();
   }, []);
@@ -651,14 +671,13 @@ export default function App() {
           </aside>
 
           {/* Product Grid Area */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+          <div className="flex-1 flex flex-col">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12 mb-12">
               {isLoadingProducts ? (
                 <div className="col-span-full py-12 text-center text-stone-500">Cargando colección...</div>
-              ) : products
-                  .filter(p => activeCategory === 'Todo' || p.category === activeCategory)
-                  .filter(p => activeType === 'Todo' || p.type === activeType)
-                  .map((product, index) => (
+              ) : currentProducts.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-stone-500">No se encontraron productos para combinar en esta categoría y prenda.</div>
+              ) : currentProducts.map((product, index) => (
             <motion.div 
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -721,6 +740,52 @@ export default function App() {
             </motion.div>
           ))}
             </div>
+
+            {/* Pagination Controls */}
+            {!isLoadingProducts && totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-auto pt-8 border-t border-stone-200">
+                <button 
+                  onClick={() => {
+                    setCurrentPage(p => Math.max(1, p - 1));
+                    document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-900 disabled:opacity-30 disabled:hover:border-stone-200 disabled:hover:text-stone-500 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setCurrentPage(i + 1);
+                        document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className={`w-10 h-10 flex items-center justify-center text-sm font-medium transition-colors border ${
+                        currentPage === i + 1 
+                          ? 'border-stone-900 bg-stone-900 text-white' 
+                          : 'border-transparent text-stone-500 hover:text-stone-900 hover:border-stone-200'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                    document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="p-2 border border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-900 disabled:opacity-30 disabled:hover:border-stone-200 disabled:hover:text-stone-500 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>

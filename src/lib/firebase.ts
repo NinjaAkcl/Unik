@@ -187,21 +187,25 @@ export async function deleteProduct(id: string) {
 
 // Bootstrap initial setup
 export async function bootstrapProductsIfNeeded() {
-  const products = await getProducts();
-  if (products.length === 0) {
-    const INITIAL = [
-      { name: "Tapado Vintage Años 80", price: 45000, category: "Mujer", type: "Abrigo", images: ["https://picsum.photos/seed/fashioncoat/800/1000", "https://picsum.photos/seed/fashioncoatalt/800/1000"], sizes: ["S", "M", "L"], inventory: {"S": 1, "M": 1, "L": 0} },
-      { name: "Remera Estampada Retro", price: 15000, category: "Hombre", type: "Remera", images: ["https://picsum.photos/seed/basictee/800/1000"], sizes: ["S", "M", "L", "XL"], inventory: {"S": 1, "M": 2, "L": 1, "XL": 0} },
-      { name: "Jean Levi's 501 Usado", price: 35000, category: "Unisex", type: "Pantalón", images: ["https://picsum.photos/seed/linentrousers/800/1000"], sizes: ["40", "42", "44"], inventory: {"40": 1, "42": 1, "44": 0} },
-      { name: "Vestido Floral de Feria", price: 25000, category: "Mujer", type: "Vestido", images: ["https://picsum.photos/seed/eveningwear/800/1000", "https://picsum.photos/seed/eveningwear2/800/1000", "https://picsum.photos/seed/eveningwear3/800/1000"], sizes: ["XS", "S", "M"], inventory: {"XS": 1, "S": 1, "M": 0} },
-      { name: "Campera de Cuero Original", price: 80000, category: "Hombre", type: "Abrigo", images: ["https://picsum.photos/seed/leatherjack/800/1000"], sizes: ["M", "L", "XL", "XXL"], inventory: {"M": 0, "L": 1, "XL": 1, "XXL": 0} },
-      { name: "Cartera de Cuero Gastado", price: 20000, category: "Accesorios", type: "Cartera", images: ["https://picsum.photos/seed/totebag/800/1000", "https://picsum.photos/seed/totebagopen/800/1000"], sizes: ["Unica"], inventory: {"Unica": 1} },
-      { name: "Zapatillas Retro Colección", price: 40000, category: "Unisex", type: "Calzado", images: ["https://picsum.photos/seed/urbansneakers/800/1000"], sizes: ["38", "39", "40", "41", "42", "43"], inventory: {"38": 1, "39": 0, "40": 1, "41": 0, "42": 1, "43": 1} },
-      { name: "Anteojos de Sol Vintage", price: 12000, category: "Accesorios", type: "Anteojos", images: ["https://picsum.photos/seed/sunnies/800/1000"], sizes: ["Unica"], inventory: {"Unica": 2} }
-    ];
-    for (const p of INITIAL) {
-      await addProduct(p);
+  try {
+    const products = await getProducts();
+    if (products.length === 0) {
+      const INITIAL = [
+        { name: "Tapado Vintage Años 80", price: 45000, category: "Mujer", type: "Abrigo", images: ["https://picsum.photos/seed/fashioncoat/800/1000", "https://picsum.photos/seed/fashioncoatalt/800/1000"], sizes: ["S", "M", "L"], inventory: {"S": 1, "M": 1, "L": 0} },
+        { name: "Remera Estampada Retro", price: 15000, category: "Hombre", type: "Remera", images: ["https://picsum.photos/seed/basictee/800/1000"], sizes: ["S", "M", "L", "XL"], inventory: {"S": 1, "M": 2, "L": 1, "XL": 0} },
+        { name: "Jean Levi's 501 Usado", price: 35000, category: "Unisex", type: "Pantalón", images: ["https://picsum.photos/seed/linentrousers/800/1000"], sizes: ["40", "42", "44"], inventory: {"40": 1, "42": 1, "44": 0} },
+        { name: "Vestido Floral de Feria", price: 25000, category: "Mujer", type: "Vestido", images: ["https://picsum.photos/seed/eveningwear/800/1000", "https://picsum.photos/seed/eveningwear2/800/1000", "https://picsum.photos/seed/eveningwear3/800/1000"], sizes: ["XS", "S", "M"], inventory: {"XS": 1, "S": 1, "M": 0} },
+        { name: "Campera de Cuero Original", price: 80000, category: "Hombre", type: "Abrigo", images: ["https://picsum.photos/seed/leatherjack/800/1000"], sizes: ["M", "L", "XL", "XXL"], inventory: {"M": 0, "L": 1, "XL": 1, "XXL": 0} },
+        { name: "Cartera de Cuero Gastado", price: 20000, category: "Accesorios", type: "Cartera", images: ["https://picsum.photos/seed/totebag/800/1000", "https://picsum.photos/seed/totebagopen/800/1000"], sizes: ["Unica"], inventory: {"Unica": 1} },
+        { name: "Zapatillas Retro Colección", price: 40000, category: "Unisex", type: "Calzado", images: ["https://picsum.photos/seed/urbansneakers/800/1000"], sizes: ["38", "39", "40", "41", "42", "43"], inventory: {"38": 1, "39": 0, "40": 1, "41": 0, "42": 1, "43": 1} },
+        { name: "Anteojos de Sol Vintage", price: 12000, category: "Accesorios", type: "Anteojos", images: ["https://picsum.photos/seed/sunnies/800/1000"], sizes: ["Unica"], inventory: {"Unica": 2} }
+      ];
+      for (const p of INITIAL) {
+        await addProduct(p);
+      }
     }
+  } catch (err) {
+    console.warn("Bootstrap saltado por falta de permisos o reglas. Esto es normal en producción público si no sos admin.", err);
   }
 }
 
