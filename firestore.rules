@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isAdmin() { 
+      return isSignedIn() && (request.auth.token.email == 'elninja732@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid))); 
+    }
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'createdAt', 'updatedAt'])
+        && data.email is string && data.email.size() <= 200
+        && (!data.keys().hasAny(['name']) || (data.name is string && data.name.size() <= 100))
+        && (!data.keys().hasAny(['phoneNumber']) || (data.phoneNumber is string && data.phoneNumber.size() <= 60))
+        && (!data.keys().hasAny(['address']) || (data.address is string && data.address.size() <= 500));
+    }
+
+    function isValidProduct(data) {
+      // NOTE: Permitting both `image` and `images` during early migration for previously created products
+      return data.keys().hasAll(['name', 'price', 'category', 'createdAt', 'updatedAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && (data.price is number || data.price is string) // Allow string or num just in case
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 50
+        && (!data.keys().hasAny(['images']) || (data.images is list && data.images.size() <= 10))
+        && (!data.keys().hasAny(['image']) || (data.image is string && data.image.size() <= 1000))
+        && (!data.keys().hasAny(['sizes']) || (data.sizes is list && data.sizes.size() <= 20))
+        && (!data.keys().hasAny(['inventory']) || (data.inventory is map))
+        && (!data.keys().hasAny(['id']) || data.id is string);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && isValidUser(incoming())
+                    && incoming().createdAt == request.time
+                    && incoming().updatedAt == request.time;
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && isValidUser(incoming())
+                    && incoming().createdAt == existing().createdAt
+                    && incoming().updatedAt == request.time
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phoneNumber', 'address', 'updatedAt']);
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin()
+                    && isValidProduct(incoming())
+                    && incoming().createdAt == request.time
+                    && incoming().updatedAt == request.time;
+      allow update: if isAdmin()
+                    && isValidProduct(incoming())
+                    && incoming().createdAt == existing().createdAt
+                    && incoming().updatedAt == request.time
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'price', 'category', 'images', 'image', 'sizes', 'inventory', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{userId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

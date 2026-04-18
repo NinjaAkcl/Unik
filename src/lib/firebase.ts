@@ -1,0 +1,173 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getFirestore, doc, getDocFromServer, setDoc, updateDoc, serverTimestamp, getDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+
+import firebaseConfigData from '../../firebase-applet-config.json';
+
+// Note: In a real application, you should use environment variables (e.g. import.meta.env.VITE_FIREBASE_API_KEY)
+// For AI Studio compatibility we are using the JSON file, which is ignored in Git
+let firebaseConfig: any = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID,
+};
+
+try {
+  // Use the auto-generated config from AI Studio if available
+  if (firebaseConfigData && Object.keys(firebaseConfigData).length > 0) {
+    firebaseConfig = firebaseConfigData;
+  }
+} catch (e) {
+  console.warn("firebase-applet-config.json no encontrado, asumiendo variables de entorno.");
+}
+
+const app = initializeApp(firebaseConfig);
+
+// Initialize with the database ID explicitly
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+export async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if(error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}
+
+// User Profile methods
+export interface UserProfile {
+  name?: string;
+  phoneNumber?: string;
+  address?: string;
+  email: string;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  try {
+    const d = await getDoc(doc(db, 'users', userId));
+    if (d.exists()) {
+      return d.data() as UserProfile;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching user profile:", err);
+    return null;
+  }
+}
+
+export async function ensureUserProfile(userId: string, email: string): Promise<void> {
+  const d = await getDoc(doc(db, 'users', userId));
+  if (!d.exists()) {
+    await setDoc(doc(db, 'users', userId), {
+      email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  }
+}
+
+export async function updateUserProfile(userId: string, profile: Partial<UserProfile>): Promise<void> {
+  const allowedUpdates: any = {
+    updatedAt: serverTimestamp()
+  };
+  
+  if (profile.name !== undefined) allowedUpdates.name = profile.name;
+  if (profile.phoneNumber !== undefined) allowedUpdates.phoneNumber = profile.phoneNumber;
+  if (profile.address !== undefined) allowedUpdates.address = profile.address;
+
+  await updateDoc(doc(db, 'users', userId), allowedUpdates);
+}
+
+// Check Admin
+export async function checkIsAdmin(uid: string, email: string | null): Promise<boolean> {
+  if (email === 'elninja732@gmail.com') return true;
+  try {
+    const d = await getDoc(doc(db, 'admins', uid));
+    return d.exists();
+  } catch {
+    return false;
+  }
+}
+
+// Product Management
+export interface AppProduct {
+  id: string; // The firestore doc internal ID will be used
+  name: string;
+  price: number;
+  category: string;
+  // Support both new schema and legacy string for seamless upgrade
+  images?: string[]; 
+  sizes?: string[];
+  image?: string; 
+  inventory?: Record<string, number>; // Maps size name to available stock
+}
+
+export async function getProducts(): Promise<AppProduct[]> {
+  try {
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'asc'));
+    const snap = await getDocs(q);
+    if (snap.empty) return [];
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as AppProduct));
+  } catch (e) {
+    console.error("Failed to fetch products:", e);
+    return [];
+  }
+}
+
+export async function addProduct(product: Omit<AppProduct, 'id'>) {
+  await addDoc(collection(db, 'products'), {
+    ...product,
+    price: Number(product.price),
+    images: product.images || (product.image ? [product.image] : []),
+    sizes: product.sizes || ['Unica'],
+    inventory: product.inventory || {},
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function updateProduct(id: string, product: Partial<AppProduct>) {
+  const allowedUpdates: any = { updatedAt: serverTimestamp() };
+  if (product.name !== undefined) allowedUpdates.name = product.name;
+  if (product.price !== undefined) allowedUpdates.price = Number(product.price);
+  if (product.category !== undefined) allowedUpdates.category = product.category;
+  if (product.image !== undefined) allowedUpdates.image = product.image;
+  if (product.images !== undefined) allowedUpdates.images = product.images;
+  if (product.sizes !== undefined) allowedUpdates.sizes = product.sizes;
+  if (product.inventory !== undefined) allowedUpdates.inventory = product.inventory;
+  
+  await updateDoc(doc(db, 'products', id), allowedUpdates);
+}
+
+export async function deleteProduct(id: string) {
+  await deleteDoc(doc(db, 'products', id));
+}
+
+// Bootstrap initial setup
+export async function bootstrapProductsIfNeeded() {
+  const products = await getProducts();
+  if (products.length === 0) {
+    const INITIAL = [
+      { name: "Tapado Vintage Años 80", price: 45000, category: "Mujer", images: ["https://picsum.photos/seed/fashioncoat/800/1000", "https://picsum.photos/seed/fashioncoatalt/800/1000"], sizes: ["S", "M", "L"], inventory: {"S": 1, "M": 1, "L": 0} },
+      { name: "Remera Estampada Retro", price: 15000, category: "Hombre", images: ["https://picsum.photos/seed/basictee/800/1000"], sizes: ["S", "M", "L", "XL"], inventory: {"S": 1, "M": 2, "L": 1, "XL": 0} },
+      { name: "Jean Levi's 501 Usado", price: 35000, category: "Unisex", images: ["https://picsum.photos/seed/linentrousers/800/1000"], sizes: ["40", "42", "44"], inventory: {"40": 1, "42": 1, "44": 0} },
+      { name: "Vestido Floral de Feria", price: 25000, category: "Mujer", images: ["https://picsum.photos/seed/eveningwear/800/1000", "https://picsum.photos/seed/eveningwear2/800/1000", "https://picsum.photos/seed/eveningwear3/800/1000"], sizes: ["XS", "S", "M"], inventory: {"XS": 1, "S": 1, "M": 0} },
+      { name: "Campera de Cuero Original", price: 80000, category: "Hombre", images: ["https://picsum.photos/seed/leatherjack/800/1000"], sizes: ["M", "L", "XL", "XXL"], inventory: {"M": 0, "L": 1, "XL": 1, "XXL": 0} },
+      { name: "Cartera de Cuero Gastado", price: 20000, category: "Accesorios", images: ["https://picsum.photos/seed/totebag/800/1000", "https://picsum.photos/seed/totebagopen/800/1000"], sizes: ["Unica"], inventory: {"Unica": 1} },
+      { name: "Zapatillas Retro Colección", price: 40000, category: "Unisex", images: ["https://picsum.photos/seed/urbansneakers/800/1000"], sizes: ["38", "39", "40", "41", "42", "43"], inventory: {"38": 1, "39": 0, "40": 1, "41": 0, "42": 1, "43": 1} },
+      { name: "Anteojos de Sol Vintage", price: 12000, category: "Accesorios", images: ["https://picsum.photos/seed/sunnies/800/1000"], sizes: ["Unica"], inventory: {"Unica": 2} }
+    ];
+    for (const p of INITIAL) {
+      await addProduct(p);
+    }
+  }
+}
+
