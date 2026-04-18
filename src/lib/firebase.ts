@@ -94,7 +94,7 @@ export async function updateUserProfile(userId: string, profile: Partial<UserPro
 
 // Check Admin
 export async function checkIsAdmin(uid: string, email: string | null): Promise<boolean> {
-  if (email === 'elninja732@gmail.com') return true;
+  if (email === 'elninja732@gmail.com' || email === 'karentabares31416@gmail.com') return true;
   try {
     const d = await getDoc(doc(db, 'admins', uid));
     return d.exists();
