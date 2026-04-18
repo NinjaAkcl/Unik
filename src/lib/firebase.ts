@@ -1,35 +1,25 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, setDoc, updateDoc, serverTimestamp, getDoc, collection, getDocs, addDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-import firebaseConfigData from '../../firebase-applet-config.json';
-
-// Note: In a real application, you should use environment variables (e.g. import.meta.env.VITE_FIREBASE_API_KEY)
-// For AI Studio compatibility we are using the JSON file, which is ignored in Git
-let firebaseConfig: any = {
+// 1. Configuración limpia usando SOLO variables de entorno
+const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  // Cambiá "firestoreDatabaseId" por "databaseId"
-  databaseId: import.meta.env.VITE_FIRESTORE_DATABASE_ID, 
+  // Usamos el nombre que configuraste en Vercel
+  databaseId: import.meta.env.VITE_FIRESTORE_DATABASE_ID 
 };
 
-try {
-  // Use the auto-generated config from AI Studio if available
-  if (firebaseConfigData && Object.keys(firebaseConfigData).length > 0) {
-    firebaseConfig = firebaseConfigData;
-  }
-} catch (e) {
-  console.warn("firebase-applet-config.json no encontrado, asumiendo variables de entorno.");
-}
-
+// 2. Inicializar la App
 const app = initializeApp(firebaseConfig);
 
-// Initialize with the database ID explicitly
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 
+// 3. LA CORRECCIÓN CLAVE: Usar la propiedad correcta
+export const db = getFirestore(app, firebaseConfig.databaseId); 
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
