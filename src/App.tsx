@@ -50,7 +50,7 @@ export default function App() {
   
   // Category state
   const categories = ['Todo', 'Mujer', 'Hombre', 'Unisex', 'Accesorios'];
-  const types = ['Todo', 'Remera', 'Pantalón', 'Abrigo', 'Vestido', 'Calzado', 'Cartera', 'Anteojos'];
+  const types = ['Todo', 'Remera', 'Pantalón', 'Abrigo', 'Vestido', 'Calzado', 'Anillos', 'Collares', 'Cinturones', 'Bufandas', 'Gorras', 'Lentes de sol', 'Bolsos y carteras'];
   
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [activeType, setActiveType] = useState('Todo');
@@ -879,17 +879,28 @@ export default function App() {
                 setActiveImageIndex(0);
               }}
             >
-              <div className="relative aspect-[3/4] bg-stone-100 rounded overflow-hidden mb-4 border border-stone-200/50">
+              <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden mb-5">
                 <img 
                   src={(product.images && product.images.length > 0) ? product.images[0] : product.image} 
                   alt={product.name} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${product.images && product.images.length > 1 ? 'group-hover:opacity-0' : ''}`}
                   referrerPolicy="no-referrer"
                   loading="lazy"
                 />
                 
+                {/* Secondary Image on Hover */}
+                {product.images && product.images.length > 1 && (
+                  <img 
+                    src={product.images[1]} 
+                    alt={`${product.name} alternate`}
+                    className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                  />
+                )}
+                
                 {/* Hover Add to Bag Action */}
-                <div className="absolute bottom-0 left-0 w-full p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out">
+                <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-10 hidden md:block">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -897,7 +908,7 @@ export default function App() {
                       setSelectedSize(null);
                       setActiveImageIndex(0);
                     }}
-                    className="w-full bg-white/90 backdrop-blur text-stone-900 py-3 font-medium text-sm shadow-lg hover:bg-stone-900 hover:text-white transition-colors flex justify-center items-center"
+                    className="w-full bg-white/95 backdrop-blur-sm text-stone-900 py-3 font-medium text-xs tracking-widest uppercase hover:bg-stone-900 hover:text-white transition-colors border border-stone-200"
                   >
                     Ver detalles
                   </button>
@@ -905,35 +916,26 @@ export default function App() {
                 
                 {/* Discount Badge */}
                 {product.originalPrice && product.originalPrice > product.price && (
-                   <div className="absolute top-4 left-4 bg-red-600/90 text-white text-xs font-semibold px-2 py-1 tracking-widest hidden md:block">
-                      OFERTA -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                   <div className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-semibold px-3 py-1.5 tracking-widest uppercase shadow-sm z-10">
+                      -{Math.round((1 - product.price / product.originalPrice) * 100)}%
                    </div>
                 )}
                 
                 {/* Sold out overlay */}
                 {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
-                   <div className="absolute top-4 right-4 bg-white/90 text-stone-900 text-xs font-medium px-2 py-1 tracking-widest hidden md:block group-hover:hidden transition-opacity">
+                   <div className="absolute top-4 left-4 bg-white/90 text-stone-900 text-[10px] font-medium px-2 py-1 tracking-widest hidden md:block z-10">
                       AGOTADO
                    </div>
                 )}
               </div>
-              <div className="flex justify-between items-start pt-1">
-                <div>
-                  <h3 className="font-medium text-stone-900 text-base">{product.name}</h3>
-                  <div className="flex items-center gap-1 mt-1">
-                    <p className="text-xs text-stone-500 uppercase tracking-wider">{product.category}</p>
-                    {product.type && (
-                      <>
-                        <span className="text-stone-300 mx-1">•</span>
-                        <p className="text-xs text-stone-500 uppercase tracking-wider">{product.type}</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-medium text-stone-900">${product.price.toLocaleString('es-AR')}</span>
+              <div className="flex flex-col items-center text-center">
+                <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1.5">{product.category} {product.type && `· ${product.type}`}</p>
+                <h3 className="font-display text-[17px] text-stone-900 mb-2 leading-tight">{product.name}</h3>
+                
+                <div className="flex items-center gap-2 justify-center">
+                  <span className="font-medium text-stone-900 text-[15px]">${product.price.toLocaleString('es-AR')}</span>
                   {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-xs text-stone-400 line-through">${product.originalPrice.toLocaleString('es-AR')}</span>
+                    <span className="text-xs text-stone-400 line-through decoration-stone-300 font-light">${product.originalPrice.toLocaleString('es-AR')}</span>
                   )}
                 </div>
               </div>
@@ -1570,19 +1572,20 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl flex flex-col md:flex-row"
+              className="relative bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col md:flex-row"
             >
               <button 
                 onClick={() => setQuickViewProduct(null)}
-                className="absolute top-4 right-4 z-10 p-2 bg-white/80 hover:bg-white rounded-full transition-colors drop-shadow-sm"
+                className="absolute top-4 right-4 z-10 p-2 text-stone-400 hover:text-stone-900 transition-colors"
+                title="Cerrar vista rápida"
               >
-                <X className="w-5 h-5 text-stone-900" />
+                <X className="w-6 h-6" />
               </button>
               
               {/* Image Gallery */}
-              <div className="w-full md:w-1/2 flex flex-col">
+              <div className="w-full md:w-[55%] flex flex-col">
                 <div 
-                  className="w-full aspect-[4/5] md:aspect-auto md:h-[600px] bg-stone-100 relative cursor-zoom-in group"
+                  className="w-full aspect-[3/4] md:h-[650px] bg-stone-50 relative cursor-zoom-in group"
                   onClick={() => setLightboxImage((quickViewProduct.images && quickViewProduct.images.length > 0) ? quickViewProduct.images[activeImageIndex] : quickViewProduct.image!)}
                 >
                   <img 
@@ -1591,17 +1594,17 @@ export default function App() {
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500" />
                 </div>
                 
                 {/* Thumbnails */}
                 {quickViewProduct.images && quickViewProduct.images.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto border-r border-stone-100">
+                  <div className="flex gap-2 p-6 overflow-x-auto border-r border-stone-100 bg-white">
                     {quickViewProduct.images.map((img, i) => (
                       <button 
                         key={i} 
                         onClick={() => setActiveImageIndex(i)}
-                        className={`relative w-20 h-24 flex-shrink-0 bg-stone-100 rounded overflow-hidden ${activeImageIndex === i ? 'ring-2 ring-stone-900 ring-offset-1' : 'opacity-70 hover:opacity-100'}`}
+                        className={`relative w-16 h-20 flex-shrink-0 bg-stone-100 overflow-hidden ${activeImageIndex === i ? 'ring-1 ring-stone-900 border border-white opacity-100' : 'opacity-60 hover:opacity-100 border border-transparent'} transition-all`}
                       >
                         <img src={img} alt={`Thumbnail ${i}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </button>
@@ -1611,36 +1614,36 @@ export default function App() {
               </div>
 
               {/* Product Info */}
-              <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm uppercase tracking-widest text-stone-500 font-medium">{quickViewProduct.category}</span>
+              <div className="w-full md:w-[45%] p-8 md:p-14 flex flex-col bg-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-medium">{quickViewProduct.category}</span>
                   {quickViewProduct.type && (
                     <>
                       <span className="text-stone-300">•</span>
-                      <span className="text-sm uppercase tracking-widest text-stone-500 font-medium">{quickViewProduct.type}</span>
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-stone-500 font-medium">{quickViewProduct.type}</span>
                     </>
                   )}
                 </div>
-                <h2 className="text-3xl font-display font-medium mb-4">{quickViewProduct.name}</h2>
-                <div className="flex items-center gap-3 mb-8">
+                <h2 className="text-3xl md:text-4xl font-display font-medium text-stone-900 mb-6 leading-tight uppercase tracking-wide">{quickViewProduct.name}</h2>
+                <div className="flex items-end gap-3 mb-10">
                   <span className="text-2xl font-light">${quickViewProduct.price.toLocaleString('es-AR')}</span>
                   {quickViewProduct.originalPrice && quickViewProduct.originalPrice > quickViewProduct.price && (
-                    <span className="text-lg text-stone-400 line-through">${quickViewProduct.originalPrice.toLocaleString('es-AR')}</span>
-                  )}
-                  {quickViewProduct.originalPrice && quickViewProduct.originalPrice > quickViewProduct.price && (
-                    <span className="bg-red-600/90 text-white text-xs font-semibold px-2 py-1 tracking-widest uppercase">
-                      Ahorrás ${(quickViewProduct.originalPrice - quickViewProduct.price).toLocaleString('es-AR')}
-                    </span>
+                    <>
+                      <span className="text-lg text-stone-400 line-through decoration-stone-300 font-light mb-0.5">${quickViewProduct.originalPrice.toLocaleString('es-AR')}</span>
+                      <span className="bg-stone-900 text-white text-[10px] font-semibold px-2 py-1 tracking-widest uppercase mb-1 ml-2">
+                        Ahorrás ${(quickViewProduct.originalPrice - quickViewProduct.price).toLocaleString('es-AR')}
+                      </span>
+                    </>
                   )}
                 </div>
                 
                 {/* Size Selector */}
                 {quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && (
-                  <div className="mb-8">
-                    <div className="flex justify-between items-center mb-3">
-                      <h4 className="text-sm font-medium uppercase tracking-widest">Talla</h4>
+                  <div className="mb-10">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-stone-900">Seleccionar Talla</h4>
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {quickViewProduct.sizes.map((size, index) => {
                         const stock = quickViewProduct.inventory?.[size];
                         const isOutOfStock = stock !== undefined && Number(stock) <= 0;
@@ -1649,12 +1652,12 @@ export default function App() {
                             key={`${size}-${index}`}
                             disabled={isOutOfStock}
                             onClick={() => setSelectedSize(size)}
-                            className={`w-14 h-12 flex items-center justify-center border font-medium text-sm transition-all ${
+                            className={`min-w-[3.5rem] px-4 py-3 flex items-center justify-center border text-xs tracking-wider transition-all duration-300 ${
                               isOutOfStock 
-                                ? 'opacity-40 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200' 
+                                ? 'opacity-30 cursor-not-allowed bg-stone-50 text-stone-400 border-stone-200 line-through' 
                                 : selectedSize === size 
-                                  ? 'border-stone-900 bg-stone-900 text-white' 
-                                  : 'border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900'
+                                  ? 'border-stone-900 bg-stone-900 text-white shadow-md' 
+                                  : 'border-stone-200 text-stone-600 hover:border-stone-900 hover:text-stone-900 bg-white'
                             }`}
                             title={isOutOfStock ? "Agotado" : stock !== undefined ? `Stock: ${stock}` : "Disponible"}
                           >
@@ -1664,14 +1667,17 @@ export default function App() {
                       })}
                     </div>
                     {selectedSize && quickViewProduct.inventory?.[selectedSize] !== undefined && (
-                      <p className="text-xs text-stone-500 mt-2">
-                        {Number(quickViewProduct.inventory[selectedSize]) > 0 ? `${quickViewProduct.inventory[selectedSize]} disponibles` : 'Agotado'}
+                      <p className="text-[11px] uppercase tracking-widest text-stone-500 mt-4">
+                        {Number(quickViewProduct.inventory[selectedSize]) > 0 ? `${quickViewProduct.inventory[selectedSize]} unidades disponibles` : 'Agotado'}
                       </p>
                     )}
                   </div>
                 )}
+                
+                {/* Minimalist divider */}
+                <div className="w-full h-px bg-stone-100 my-8"></div>
 
-                <div className="flex gap-4 mt-auto pt-8">
+                <div className="flex gap-4 mt-auto">
                   <button 
                     disabled={
                       (quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && quickViewProduct.sizes.every(s => quickViewProduct.inventory?.[s] !== undefined && Number(quickViewProduct.inventory[s]) <= 0))
@@ -1694,7 +1700,7 @@ export default function App() {
                       
                       addToCart(quickViewProduct, selectedSize || undefined);
                     }}
-                    className="flex-1 bg-stone-900 text-white py-4 font-medium hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 bg-stone-900 text-white py-5 px-6 font-medium text-[13px] tracking-[0.1em] uppercase hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
                     {
                       (quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && quickViewProduct.sizes.every(s => quickViewProduct.inventory?.[s] !== undefined && Number(quickViewProduct.inventory[s]) <= 0))
@@ -1704,12 +1710,12 @@ export default function App() {
                   </button>
                 </div>
                 
-                <div className="mt-8 border-t border-stone-100 pt-6 space-y-4">
-                  <div className="flex gap-3 text-sm text-stone-600">
-                    <span className="shrink-0">•</span><span>Envío gratis en compras superiores a $100.000.</span>
+                <div className="mt-8 space-y-3 pb-4">
+                  <div className="flex items-center gap-3 text-xs tracking-wide text-stone-500 uppercase">
+                    <span className="shrink-0 w-1 h-1 bg-stone-300 rounded-full"></span><span>Envío gratis desde $100.000</span>
                   </div>
-                  <div className="flex gap-3 text-sm text-stone-600">
-                    <span className="shrink-0">•</span><span>Consultá nuestra política de cambios.</span>
+                  <div className="flex items-center gap-3 text-xs tracking-wide text-stone-500 uppercase">
+                    <span className="shrink-0 w-1 h-1 bg-stone-300 rounded-full"></span><span>Políticas de cambio flexibles</span>
                   </div>
                 </div>
               </div>
