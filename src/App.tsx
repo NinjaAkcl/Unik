@@ -146,10 +146,18 @@ export default function App() {
 
   const saveProfile = async () => {
     if (!user) return;
-    await updateUserProfile(user.uid, editForm);
-    const updated = await getUserProfile(user.uid);
-    if (updated) setProfile(updated);
-    setIsEditingProfile(false);
+    try {
+      await updateUserProfile(user.uid, editForm);
+      const updated = await getUserProfile(user.uid);
+      if (updated) setProfile(updated);
+      setIsEditingProfile(false);
+    } catch (e: any) {
+      if (e.message?.includes('permissions')) {
+        alert("Error de permisos al guardar tu perfil. ¡Tenés que actualizar firestore.rules en tu consola de Firebase!");
+      } else {
+        alert("Error al guardar el perfil: " + e.message);
+      }
+    }
   };
 
   // Navbar scroll effect
@@ -501,7 +509,7 @@ export default function App() {
                         <div className="flex-1 flex flex-col pt-1">
                           <div className="flex justify-between">
                             <h3 className="font-medium text-stone-900 line-clamp-1">{item.name}</h3>
-                            <span className="font-medium">€{item.price}</span>
+                            <span className="font-medium">${item.price.toLocaleString('es-AR')}</span>
                           </div>
                           <p className="text-sm text-stone-500 mt-1">{item.category} {item.selectedSize ? `| Talla ${item.selectedSize}` : ''}</p>
                           
@@ -715,6 +723,13 @@ export default function App() {
                   </button>
                 </div>
                 
+                {/* Discount Badge */}
+                {product.originalPrice && product.originalPrice > product.price && (
+                   <div className="absolute top-4 left-4 bg-red-600/90 text-white text-xs font-semibold px-2 py-1 tracking-widest hidden md:block">
+                      OFERTA -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                   </div>
+                )}
+                
                 {/* Sold out overlay */}
                 {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
                    <div className="absolute top-4 right-4 bg-white/90 text-stone-900 text-xs font-medium px-2 py-1 tracking-widest hidden md:block group-hover:hidden transition-opacity">
@@ -735,7 +750,12 @@ export default function App() {
                     )}
                   </div>
                 </div>
-                <span className="font-medium text-stone-900">${product.price.toLocaleString('es-AR')}</span>
+                <div className="flex flex-col items-end">
+                  <span className="font-medium text-stone-900">${product.price.toLocaleString('es-AR')}</span>
+                  {product.originalPrice && product.originalPrice > product.price && (
+                    <span className="text-xs text-stone-400 line-through">${product.originalPrice.toLocaleString('es-AR')}</span>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
@@ -1083,12 +1103,22 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-stone-500 mb-1">Precio ($)</label>
+                      <label className="block text-sm text-stone-500 mb-1">Precio Actual ($)</label>
                       <input 
                         type="number" 
                         value={editingProduct.price || ''} 
                         onChange={e => setEditingProduct({...editingProduct, price: Number(e.target.value)})}
                         className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-500 mb-1">Precio Original / Lista ($) <span className="text-xs text-stone-400 font-normal">(Opcional. Si es mayor al precio actual, se mostrará como OFERTA)</span></label>
+                      <input 
+                        type="number" 
+                        value={editingProduct.originalPrice || ''} 
+                        onChange={e => setEditingProduct({...editingProduct, originalPrice: e.target.value ? Number(e.target.value) : undefined})}
+                        className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500"
+                        placeholder="Ej: 50000"
                       />
                     </div>
                     <div>
@@ -1239,11 +1269,29 @@ export default function App() {
                           delete productToSave.rawSizes;
                           
                           if (editingProduct.id) {
-                            await updateProduct(editingProduct.id, productToSave);
-                            setToastMessage("Producto actualizado");
+                            try {
+                              await updateProduct(editingProduct.id, productToSave);
+                              setToastMessage("Producto actualizado");
+                            } catch (e: any) {
+                              if (e.message?.includes('permissions')) {
+                                alert("Error de permisos. ¡No te olvides de copiar las nuevas reglas de firestore.rules a tu consola de Firebase!");
+                              } else {
+                                alert("Error al actualizar: " + e.message);
+                              }
+                              return;
+                            }
                           } else {
-                            await addProduct(productToSave as AppProduct);
-                            setToastMessage("Producto creado");
+                            try {
+                              await addProduct(productToSave as AppProduct);
+                              setToastMessage("Producto creado");
+                            } catch (e: any) {
+                              if (e.message?.includes('permissions')) {
+                                alert("Error de permisos al crear. ¡Tenés que actualizar firestore.rules en tu consola de Firebase!");
+                              } else {
+                                alert("Error al crear: " + e.message);
+                              }
+                              return;
+                            }
                           }
                           await refreshProducts();
                           setEditingProduct(null);
@@ -1280,7 +1328,7 @@ export default function App() {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-medium text-sm truncate">{p.name}</h4>
                             <p className="text-stone-500 text-xs mt-1">{p.category}</p>
-                            <p className="font-medium text-sm mt-1">€{p.price}</p>
+                            <p className="font-medium text-sm mt-1">${p.price.toLocaleString('es-AR')}</p>
                           </div>
                           <div className="flex flex-col gap-2">
                             <button 
@@ -1297,9 +1345,17 @@ export default function App() {
                             <button 
                               onClick={async () => {
                                 if(confirm(`¿Seguro que quieres borrar ${p.name}?`)) {
-                                  await deleteProduct(p.id);
-                                  setToastMessage("Producto eliminado");
-                                  await refreshProducts();
+                                  try {
+                                    await deleteProduct(p.id);
+                                    setToastMessage("Producto eliminado");
+                                    await refreshProducts();
+                                  } catch (e: any) {
+                                    if (e.message?.includes('permissions')) {
+                                      alert("Error de permisos al borrar. ¡Tenés que actualizar firestore.rules en tu consola de Firebase!");
+                                    } else {
+                                      alert("Error al borrar: " + e.message);
+                                    }
+                                  }
                                 }
                               }}
                               className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition"
@@ -1386,7 +1442,17 @@ export default function App() {
                   )}
                 </div>
                 <h2 className="text-3xl font-display font-medium mb-4">{quickViewProduct.name}</h2>
-                <span className="text-2xl font-light mb-8">${quickViewProduct.price.toLocaleString('es-AR')}</span>
+                <div className="flex items-center gap-3 mb-8">
+                  <span className="text-2xl font-light">${quickViewProduct.price.toLocaleString('es-AR')}</span>
+                  {quickViewProduct.originalPrice && quickViewProduct.originalPrice > quickViewProduct.price && (
+                    <span className="text-lg text-stone-400 line-through">${quickViewProduct.originalPrice.toLocaleString('es-AR')}</span>
+                  )}
+                  {quickViewProduct.originalPrice && quickViewProduct.originalPrice > quickViewProduct.price && (
+                    <span className="bg-red-600/90 text-white text-xs font-semibold px-2 py-1 tracking-widest uppercase">
+                      Ahorrás ${(quickViewProduct.originalPrice - quickViewProduct.price).toLocaleString('es-AR')}
+                    </span>
+                  )}
+                </div>
                 
                 {/* Size Selector */}
                 {quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && (

@@ -133,6 +133,7 @@ export interface AppProduct {
   id: string; // The firestore doc internal ID will be used
   name: string;
   price: number;
+  originalPrice?: number;
   category: string; // Used for "Género" (Mujer, Hombre, Unisex, Accesorios)
   type?: string; // Used for "Tipo de prenda" (Pantalón, Remera, Vestido, etc)
   // Support both new schema and legacy string for seamless upgrade
@@ -155,7 +156,7 @@ export async function getProducts(): Promise<AppProduct[]> {
 }
 
 export async function addProduct(product: Omit<AppProduct, 'id'>) {
-  await addDoc(collection(db, 'products'), {
+  const payload: any = {
     ...product,
     price: Number(product.price),
     images: product.images || (product.image ? [product.image] : []),
@@ -164,13 +165,20 @@ export async function addProduct(product: Omit<AppProduct, 'id'>) {
     type: product.type || '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
-  });
+  };
+  
+  if (product.originalPrice) {
+    payload.originalPrice = Number(product.originalPrice);
+  }
+
+  await addDoc(collection(db, 'products'), payload);
 }
 
 export async function updateProduct(id: string, product: Partial<AppProduct>) {
   const allowedUpdates: any = { updatedAt: serverTimestamp() };
   if (product.name !== undefined) allowedUpdates.name = product.name;
   if (product.price !== undefined) allowedUpdates.price = Number(product.price);
+  if (product.originalPrice !== undefined) allowedUpdates.originalPrice = Number(product.originalPrice);
   if (product.category !== undefined) allowedUpdates.category = product.category;
   if (product.type !== undefined) allowedUpdates.type = product.type;
   if (product.image !== undefined) allowedUpdates.image = product.image;

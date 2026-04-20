@@ -21,6 +21,7 @@
       "properties": {
         "name": { "type": "string" },
         "price": { "type": "number" },
+        "originalPrice": { "type": "number", "description": "Used for sales: if originalPrice > price, product is on sale" },
         "category": { "type": "string" },
         "type": { "type": "string" },
         "images": { "type": "array", "items": { "type": "string" } },

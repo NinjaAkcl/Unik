@@ -25,6 +25,7 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'price', 'category', 'createdAt', 'updatedAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 100
         && (data.price is number || data.price is string) // Allow string or num just in case
+        && (!data.keys().hasAny(['originalPrice']) || (data.originalPrice is number || data.originalPrice is string))
         && data.category is string && data.category.size() > 0 && data.category.size() <= 50
         && (!data.keys().hasAny(['type']) || (data.type is string && data.type.size() <= 50))
         && (!data.keys().hasAny(['images']) || (data.images is list && data.images.size() <= 10))
@@ -57,7 +58,7 @@ service cloud.firestore {
                     && isValidProduct(incoming())
                     && incoming().createdAt == existing().createdAt
                     && incoming().updatedAt == request.time
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'price', 'category', 'type', 'images', 'image', 'sizes', 'inventory', 'updatedAt']);
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'price', 'originalPrice', 'category', 'type', 'images', 'image', 'sizes', 'inventory', 'updatedAt']);
       allow delete: if isAdmin();
     }
 
