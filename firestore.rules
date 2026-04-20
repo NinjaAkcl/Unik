@@ -9,7 +9,11 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isAdmin() { 
-      return isSignedIn() && (request.auth.token.email == 'elninja732@gmail.com' || exists(/databases/$(database)/documents/admins/$(request.auth.uid))); 
+      return isSignedIn() && (
+        request.auth.token.email == 'elninja732@gmail.com' || 
+        request.auth.token.email == 'karentabares31416@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      ); 
     }
     
     function isValidUser(data) {

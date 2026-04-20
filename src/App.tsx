@@ -54,15 +54,53 @@ export default function App() {
   
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [activeType, setActiveType] = useState('Todo');
+  const [activeSize, setActiveSize] = useState('Todo');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('Novedades');
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
+  // Derive unique sizes based on current products
+  const availableSizes = ['Todo', ...Array.from(new Set(products.flatMap(p => p.sizes || []))).sort()];
+  
+  // Sort options
+  const sortOptions = ['Novedades', 'Menor Precio', 'Mayor Precio', 'Ofertas'];
+
   // Derive filtered and paginated products
-  const filteredProducts = products
+  let filteredProducts = products
     .filter(p => activeCategory === 'Todo' || p.category === activeCategory)
-    .filter(p => activeType === 'Todo' || p.type === activeType);
+    .filter(p => activeType === 'Todo' || p.type === activeType)
+    .filter(p => activeSize === 'Todo' || (p.sizes && p.sizes.includes(activeSize)))
+    .filter(p => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      // search by name or category/type
+      return p.name.toLowerCase().includes(query) || 
+             p.category.toLowerCase().includes(query) || 
+             (p.type && p.type.toLowerCase().includes(query));
+    });
+
+  // Apply sorting
+  filteredProducts = [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'Menor Precio') return a.price - b.price;
+    if (sortBy === 'Mayor Precio') return b.price - a.price;
+    if (sortBy === 'Ofertas') {
+      const aIsSale = a.originalPrice && a.originalPrice > a.price ? 1 : 0;
+      const bIsSale = b.originalPrice && b.originalPrice > b.price ? 1 : 0;
+      return bIsSale - aIsSale; // Push sale items to top
+    }
+    // Novedades (Default) - Assuming newer items are at the end of the array or rely on an ID/timestamp
+    // Because we don't have a strict createdAt here we just reverse the natural list or keep it
+    return -1; // Assuming array from firebase is recent first, or we just reverse to pseudo "latest"
+  });
+  
+  // Novedades specific natural sorting assuming the most recently added was at the end of the initial fetch (if no real date exists)
+  if(sortBy === 'Novedades') {
+      filteredProducts = filteredProducts.reverse();
+  }
   
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
   const currentProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -70,7 +108,7 @@ export default function App() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeCategory, activeType]);
+  }, [activeCategory, activeType, activeSize, searchQuery, sortBy]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -280,7 +318,10 @@ export default function App() {
 
           {/* Actions */}
           <div className="flex items-center space-x-5 relative z-50">
-            <button className={`hidden sm:flex transition-colors duration-300 hover:opacity-70 ${isScrolled ? 'text-stone-900' : 'text-white'}`}>
+            <button 
+              className={`flex transition-colors duration-300 hover:opacity-70 ${isScrolled ? 'text-stone-900' : 'text-white'}`}
+              onClick={() => setIsSearchOpen(true)}
+            >
               <Search className="w-5 h-5" />
             </button>
             <button 
@@ -312,6 +353,77 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Search Overlay */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed inset-0 z-[60] bg-white/95 backdrop-blur-md flex flex-col pt-24 px-6 md:px-12"
+          >
+            <button 
+              onClick={() => {
+                setIsSearchOpen(false);
+                setSearchQuery('');
+              }}
+              className="absolute top-8 right-6 md:right-12 p-2 hover:bg-stone-100 rounded-full transition-colors"
+            >
+              <X className="w-8 h-8 text-stone-500" />
+            </button>
+            
+            <div className="max-w-4xl w-full mx-auto relative">
+              <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 text-stone-300" />
+              <input 
+                type="text"
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar remeras, talles, ofertas..."
+                className="w-full bg-transparent border-b-2 border-stone-200 text-3xl md:text-5xl font-display font-medium text-stone-900 py-6 pl-14 outline-none focus:border-stone-900 transition-colors placeholder:text-stone-300"
+              />
+              {searchQuery && (
+                <div className="mt-8">
+                  <p className="text-stone-500 mb-4 text-sm font-medium uppercase tracking-widest">
+                    {filteredProducts.length} Resultados
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 overflow-y-auto max-h-[60vh] pb-24">
+                    {filteredProducts.slice(0, 8).map(p => (
+                      <div 
+                        key={p.id}
+                        className="group cursor-pointer"
+                        onClick={() => {
+                          setIsSearchOpen(false);
+                          document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                          // Optionally open quick view directly
+                        }}
+                      >
+                        <div className="aspect-[3/4] bg-stone-100 mb-3 overflow-hidden">
+                          <img src={p.images?.[0] || p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        </div>
+                        <h4 className="font-medium text-sm line-clamp-1">{p.name}</h4>
+                        <p className="text-stone-500 text-xs">${p.price.toLocaleString('es-AR')}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {filteredProducts.length > 8 && (
+                    <button 
+                      onClick={() => {
+                        setIsSearchOpen(false);
+                        document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="mt-6 w-full py-4 border border-stone-200 text-center text-sm font-medium hover:bg-stone-50 transition-colors"
+                    >
+                      Ver todos los resultados
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
@@ -393,11 +505,13 @@ export default function App() {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-10">
                 {/* Reset Filters Mobile */}
-                {(activeCategory !== 'Todo' || activeType !== 'Todo') && (
+                {(activeCategory !== 'Todo' || activeType !== 'Todo' || activeSize !== 'Todo' || sortBy !== 'Novedades') && (
                   <button 
                     onClick={() => {
                       setActiveCategory('Todo');
                       setActiveType('Todo');
+                      setActiveSize('Todo');
+                      setSortBy('Novedades');
                       setIsFilterMenuOpen(false);
                     }}
                     className="w-full text-center text-sm font-semibold uppercase tracking-widest text-stone-900 border border-stone-900 py-3 hover:bg-stone-900 hover:text-white transition-colors"
@@ -405,6 +519,38 @@ export default function App() {
                     Borrar Filtros
                   </button>
                 )}
+
+                {/* Sort By Mobile */}
+                <div>
+                  <h3 className="font-display font-medium text-lg mb-5 text-stone-900">Ordenar por</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {sortOptions.map(sort => (
+                      <button 
+                        key={sort}
+                        onClick={() => setSortBy(sort)}
+                        className={`px-4 py-2 text-sm border transition-colors ${sortBy === sort ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900'}`}
+                      >
+                        {sort}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Size Mobile */}
+                <div>
+                  <h3 className="font-display font-medium text-lg mb-5 text-stone-900">Talle</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {availableSizes.map(size => (
+                      <button 
+                        key={size}
+                        onClick={() => setActiveSize(size)}
+                        className={`min-w-[3rem] px-3 py-2 text-sm border text-center transition-colors ${activeSize === size ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Gender Mobile */}
                 <div>
@@ -624,17 +770,51 @@ export default function App() {
             <div className="sticky top-28 space-y-10">
               
               {/* Reset Filters */}
-              {(activeCategory !== 'Todo' || activeType !== 'Todo') && (
+              {(activeCategory !== 'Todo' || activeType !== 'Todo' || activeSize !== 'Todo' || sortBy !== 'Novedades') && (
                 <button 
                   onClick={() => {
                     setActiveCategory('Todo');
                     setActiveType('Todo');
+                    setActiveSize('Todo');
+                    setSortBy('Novedades');
                   }}
                   className="text-xs font-semibold uppercase tracking-widest text-stone-900 border-b border-stone-900 pb-1 hover:text-stone-500 transition-colors"
                 >
                   Limpiar Filtros
                 </button>
               )}
+
+              {/* Sort By Sidebar */}
+              <div>
+                <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Ordenar por</h3>
+                <div className="flex flex-col gap-2">
+                  {sortOptions.map(sort => (
+                    <button 
+                      key={sort}
+                      onClick={() => setSortBy(sort)}
+                      className={`text-left text-sm transition-colors ${sortBy === sort ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                    >
+                      {sort}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Size Sidebar */}
+              <div>
+                <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Talle</h3>
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map(size => (
+                    <button 
+                      key={size}
+                      onClick={() => setActiveSize(size)}
+                      className={`min-w-[2.5rem] px-2 py-1 text-sm border text-center transition-colors ${activeSize === size ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900'}`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Gender Sidebar */}
               <div>
@@ -684,7 +864,7 @@ export default function App() {
               {isLoadingProducts ? (
                 <div className="col-span-full py-12 text-center text-stone-500">Cargando colección...</div>
               ) : currentProducts.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-stone-500">No se encontraron productos para combinar en esta categoría y prenda.</div>
+                <div className="col-span-full py-12 text-center text-stone-500">No se encontraron productos que coincidan con tus filtros y búsquedas.</div>
               ) : currentProducts.map((product, index) => (
             <motion.div 
               key={product.id}
