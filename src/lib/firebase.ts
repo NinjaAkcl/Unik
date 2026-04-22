@@ -136,6 +136,7 @@ export interface AppProduct {
   originalPrice?: number;
   category: string; // Used for "Género" (Mujer, Hombre, Unisex, Accesorios)
   type?: string; // Used for "Tipo de prenda" (Pantalón, Remera, Vestido, etc)
+  season?: string; // Used for highlighting in specific collections (Primavera, etc)
   // Support both new schema and legacy string for seamless upgrade
   images?: string[]; 
   sizes?: string[];
@@ -163,6 +164,7 @@ export async function addProduct(product: Omit<AppProduct, 'id'>) {
     sizes: product.sizes || ['Unica'],
     inventory: product.inventory || {},
     type: product.type || '',
+    season: product.season || 'Todas',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
@@ -181,6 +183,7 @@ export async function updateProduct(id: string, product: Partial<AppProduct>) {
   if (product.originalPrice !== undefined) allowedUpdates.originalPrice = Number(product.originalPrice);
   if (product.category !== undefined) allowedUpdates.category = product.category;
   if (product.type !== undefined) allowedUpdates.type = product.type;
+  if (product.season !== undefined) allowedUpdates.season = product.season;
   if (product.image !== undefined) allowedUpdates.image = product.image;
   if (product.images !== undefined) allowedUpdates.images = product.images;
   if (product.sizes !== undefined) allowedUpdates.sizes = product.sizes;

@@ -51,9 +51,11 @@ export default function App() {
   // Category state
   const categories = ['Todo', 'Mujer', 'Hombre', 'Unisex', 'Accesorios'];
   const types = ['Todo', 'Remera', 'Pantalón', 'Abrigo', 'Vestido', 'Calzado', 'Anillos', 'Collares', 'Cinturones', 'Bufandas', 'Gorras', 'Lentes de sol', 'Bolsos y carteras'];
+  const seasons = ['Todas', 'Primavera', 'Verano', 'Otoño', 'Invierno'];
   
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [activeType, setActiveType] = useState('Todo');
+  const [activeSeason, setActiveSeason] = useState('Todas');
   const [activeSize, setActiveSize] = useState('Todo');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Novedades');
@@ -73,6 +75,7 @@ export default function App() {
   let filteredProducts = products
     .filter(p => activeCategory === 'Todo' || p.category === activeCategory)
     .filter(p => activeType === 'Todo' || p.type === activeType)
+    .filter(p => activeSeason === 'Todas' || p.season === activeSeason)
     .filter(p => activeSize === 'Todo' || (p.sizes && p.sizes.includes(activeSize)))
     .filter(p => {
       if (!searchQuery.trim()) return true;
@@ -108,7 +111,7 @@ export default function App() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeCategory, activeType, activeSize, searchQuery, sortBy]);
+  }, [activeCategory, activeType, activeSeason, activeSize, searchQuery, sortBy]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -505,11 +508,12 @@ export default function App() {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-10">
                 {/* Reset Filters Mobile */}
-                {(activeCategory !== 'Todo' || activeType !== 'Todo' || activeSize !== 'Todo' || sortBy !== 'Novedades') && (
+                {(activeCategory !== 'Todo' || activeType !== 'Todo' || activeSeason !== 'Todas' || activeSize !== 'Todo' || sortBy !== 'Novedades') && (
                   <button 
                     onClick={() => {
                       setActiveCategory('Todo');
                       setActiveType('Todo');
+                      setActiveSeason('Todas');
                       setActiveSize('Todo');
                       setSortBy('Novedades');
                       setIsFilterMenuOpen(false);
@@ -519,6 +523,22 @@ export default function App() {
                     Borrar Filtros
                   </button>
                 )}
+
+                {/* Season Mobile */}
+                <div>
+                  <h3 className="font-display font-medium text-lg mb-5 text-stone-900">Colecciones</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {seasons.map(s => (
+                      <button 
+                        key={s}
+                        onClick={() => setActiveSeason(s)}
+                        className={`px-4 py-2 text-sm border transition-colors ${activeSeason === s ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-900 hover:text-stone-900'}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Sort By Mobile */}
                 <div>
@@ -836,6 +856,26 @@ export default function App() {
                 </ul>
               </div>
               
+              {/* Season Sidebar */}
+              <div>
+                <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Colecciones</h3>
+                <ul className="space-y-3">
+                  {seasons.map(s => (
+                    <li key={s}>
+                      <button 
+                        onClick={() => setActiveSeason(s)}
+                        className={`text-sm flex items-center gap-3 transition-colors ${activeSeason === s ? 'text-stone-900 font-medium' : 'text-stone-500 hover:text-stone-900'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors ${activeSeason === s ? 'border-stone-900 bg-stone-900' : 'border-stone-300 bg-transparent'}`}>
+                          {activeSeason === s && <div className="w-1.5 h-1.5 bg-white rounded-sm" />}
+                        </div>
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
               {/* Type Sidebar */}
               <div>
                 <h3 className="font-display font-medium text-lg mb-4 text-stone-900">Tipo de Prenda</h3>
@@ -858,93 +898,282 @@ export default function App() {
             </div>
           </aside>
 
-          {/* Product Grid Area */}
+          {/* Product Grid Area or Seasonal Sections */}
           <div className="flex-1 flex flex-col">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12 mb-12">
-              {isLoadingProducts ? (
-                <div className="col-span-full py-12 text-center text-stone-500">Cargando colección...</div>
-              ) : currentProducts.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-stone-500">No se encontraron productos que coincidan con tus filtros y búsquedas.</div>
-              ) : currentProducts.map((product, index) => (
-            <motion.div 
-              key={product.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group cursor-pointer flex flex-col"
-              onClick={() => {
-                setQuickViewProduct(product);
-                setSelectedSize(null);
-                setActiveImageIndex(0);
-              }}
-            >
-              <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden mb-5">
-                <img 
-                  src={(product.images && product.images.length > 0) ? product.images[0] : product.image} 
-                  alt={product.name} 
-                  className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${product.images && product.images.length > 1 ? 'group-hover:opacity-0' : ''}`}
-                  referrerPolicy="no-referrer"
-                  loading="lazy"
-                />
-                
-                {/* Secondary Image on Hover */}
-                {product.images && product.images.length > 1 && (
-                  <img 
-                    src={product.images[1]} 
-                    alt={`${product.name} alternate`}
-                    className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                  />
+            {isLoadingProducts ? (
+              <div className="py-12 text-center text-stone-500">Cargando colección...</div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="py-12 text-center text-stone-500">No se encontraron productos que coincidan con tus filtros y búsquedas.</div>
+            ) : (activeCategory === 'Todo' && activeType === 'Todo' && activeSeason === 'Todas' && activeSize === 'Todo' && searchQuery === '' && currentPage === 1 && products.filter(p => p.season && p.season !== 'Todas').length > 0) ? (
+              /* --- SEASONAL HIGHLIGHTS HOME VIEW --- */
+              <div className="space-y-24 mb-16">
+                {seasons.filter(s => s !== 'Todas').map(season => {
+                  const seasonProducts = filteredProducts.filter(p => p.season === season);
+                  if (seasonProducts.length === 0) return null;
+                  
+                  return (
+                    <div key={season} className="flex flex-col">
+                      <div className="flex items-end justify-between mb-8 border-b border-stone-200 pb-4">
+                        <div>
+                          <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1">Colección Exclusiva</p>
+                          <h2 className="font-display font-medium text-3xl text-stone-900">{season}</h2>
+                        </div>
+                        <button 
+                          onClick={() => setActiveSeason(season)}
+                          className="flex items-center gap-2 text-xs uppercase tracking-widest font-medium hover:text-stone-500 transition-colors"
+                        >
+                          Ver todo <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      {/* Horizontal Scroller for Season */}
+                      <div className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory hide-scrollbars -mx-4 px-4 sm:mx-0 sm:px-0">
+                        {seasonProducts.slice(0, 6).map((product, index) => (
+                          <motion.div 
+                            key={product.id}
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, margin: "-100px" }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            className="group cursor-pointer flex flex-col min-w-[260px] sm:min-w-[300px] max-w-[320px] snap-start"
+                            onClick={() => {
+                              setQuickViewProduct(product);
+                              setSelectedSize(null);
+                              setActiveImageIndex(0);
+                            }}
+                          >
+                            <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden mb-5">
+                              <img 
+                                src={(product.images && product.images.length > 0) ? product.images[0] : product.image} 
+                                alt={product.name} 
+                                className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${product.images && product.images.length > 1 ? 'group-hover:opacity-0' : ''}`}
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                              />
+                              
+                              {/* Secondary Image on Hover */}
+                              {product.images && product.images.length > 1 && (
+                                <img 
+                                  src={product.images[1]} 
+                                  alt={`${product.name} alternate`}
+                                  className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
+                                  referrerPolicy="no-referrer"
+                                  loading="lazy"
+                                />
+                              )}
+                              
+                              <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-10 hidden md:block">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setQuickViewProduct(product);
+                                    setSelectedSize(null);
+                                    setActiveImageIndex(0);
+                                  }}
+                                  className="w-full bg-white/95 backdrop-blur-sm text-stone-900 py-3 font-medium text-xs tracking-widest uppercase hover:bg-stone-900 hover:text-white transition-colors border border-stone-200"
+                                >
+                                  Ver detalles
+                                </button>
+                              </div>
+                              
+                              {/* Discount Badge */}
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <div className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-semibold px-3 py-1.5 tracking-widest uppercase shadow-sm z-10">
+                                  -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                                </div>
+                              )}
+                              
+                              {/* Sold out overlay */}
+                              {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
+                                <div className="absolute top-4 left-4 bg-white/90 text-stone-900 text-[10px] font-medium px-2 py-1 tracking-widest z-10">
+                                  AGOTADO
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-center text-center">
+                              <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1.5">{product.category} {product.type && `· ${product.type}`}</p>
+                              <h3 className="font-display text-[17px] text-stone-900 mb-2 leading-tight">{product.name}</h3>
+                              
+                              <div className="flex items-center gap-2 justify-center">
+                                <span className="font-medium text-stone-900 text-[15px]">${product.price.toLocaleString('es-AR')}</span>
+                                {product.originalPrice && product.originalPrice > product.price && (
+                                  <span className="text-xs text-stone-400 line-through decoration-stone-300 font-light">${product.originalPrice.toLocaleString('es-AR')}</span>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Leftovers / Everything Else */}
+                {filteredProducts.filter(p => p.season === 'Todas' || !p.season).length > 0 && (
+                  <div>
+                    <div className="flex items-end justify-between mb-8 border-b border-stone-200 pb-4">
+                      <div>
+                        <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1">Clásicos</p>
+                        <h2 className="font-display font-medium text-3xl text-stone-900">Novedades y Básicos</h2>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+                      {filteredProducts.filter(p => p.season === 'Todas' || !p.season).slice(0, 9).map((product, index) => (
+                        <motion.div 
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-100px" }}
+                          transition={{ duration: 0.5, delay: index * 0.1 }}
+                          className="group cursor-pointer flex flex-col"
+                          onClick={() => {
+                            setQuickViewProduct(product);
+                            setSelectedSize(null);
+                            setActiveImageIndex(0);
+                          }}
+                        >
+                          {/* Inner Card Code matching original Grid */}
+                          <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden mb-5">
+                            <img 
+                              src={(product.images && product.images.length > 0) ? product.images[0] : product.image} 
+                              alt={product.name} 
+                              className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${product.images && product.images.length > 1 ? 'group-hover:opacity-0' : ''}`}
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                            />
+                            {product.images && product.images.length > 1 && (
+                              <img 
+                                src={product.images[1]} 
+                                alt={`${product.name} alternate`}
+                                className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
+                                referrerPolicy="no-referrer"
+                                loading="lazy"
+                              />
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-10 hidden md:block">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuickViewProduct(product);
+                                  setSelectedSize(null);
+                                  setActiveImageIndex(0);
+                                }}
+                                className="w-full bg-white/95 backdrop-blur-sm text-stone-900 py-3 font-medium text-xs tracking-widest uppercase hover:bg-stone-900 hover:text-white transition-colors border border-stone-200"
+                              >
+                                Ver detalles
+                              </button>
+                            </div>
+                            {product.originalPrice && product.originalPrice > product.price && (
+                              <div className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-semibold px-3 py-1.5 tracking-widest uppercase shadow-sm z-10">
+                                -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                              </div>
+                            )}
+                            {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
+                              <div className="absolute top-4 left-4 bg-white/90 text-stone-900 text-[10px] font-medium px-2 py-1 tracking-widest z-10">
+                                AGOTADO
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-center text-center">
+                            <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1.5">{product.category} {product.type && `· ${product.type}`}</p>
+                            <h3 className="font-display text-[17px] text-stone-900 mb-2 leading-tight">{product.name}</h3>
+                            <div className="flex items-center gap-2 justify-center">
+                              <span className="font-medium text-stone-900 text-[15px]">${product.price.toLocaleString('es-AR')}</span>
+                              {product.originalPrice && product.originalPrice > product.price && (
+                                <span className="text-xs text-stone-400 line-through decoration-stone-300 font-light">${product.originalPrice.toLocaleString('es-AR')}</span>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                
-                {/* Hover Add to Bag Action */}
-                <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-10 hidden md:block">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
+              </div>
+            ) : (
+              /* --- STANDARD GRID VIEW (Filtered/Paginated) --- */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12 mb-12">
+                {currentProducts.map((product, index) => (
+                  <motion.div 
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="group cursor-pointer flex flex-col"
+                    onClick={() => {
                       setQuickViewProduct(product);
                       setSelectedSize(null);
                       setActiveImageIndex(0);
                     }}
-                    className="w-full bg-white/95 backdrop-blur-sm text-stone-900 py-3 font-medium text-xs tracking-widest uppercase hover:bg-stone-900 hover:text-white transition-colors border border-stone-200"
                   >
-                    Ver detalles
-                  </button>
-                </div>
-                
-                {/* Discount Badge */}
-                {product.originalPrice && product.originalPrice > product.price && (
-                   <div className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-semibold px-3 py-1.5 tracking-widest uppercase shadow-sm z-10">
-                      -{Math.round((1 - product.price / product.originalPrice) * 100)}%
-                   </div>
-                )}
-                
-                {/* Sold out overlay */}
-                {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
-                   <div className="absolute top-4 left-4 bg-white/90 text-stone-900 text-[10px] font-medium px-2 py-1 tracking-widest hidden md:block z-10">
-                      AGOTADO
-                   </div>
-                )}
+                    <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden mb-5">
+                      <img 
+                        src={(product.images && product.images.length > 0) ? product.images[0] : product.image} 
+                        alt={product.name} 
+                        className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${product.images && product.images.length > 1 ? 'group-hover:opacity-0' : ''}`}
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                      />
+                      
+                      {/* Secondary Image on Hover */}
+                      {product.images && product.images.length > 1 && (
+                        <img 
+                          src={product.images[1]} 
+                          alt={`${product.name} alternate`}
+                          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                          loading="lazy"
+                        />
+                      )}
+                      
+                      {/* Hover Add to Bag Action */}
+                      <div className="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-10 hidden md:block">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickViewProduct(product);
+                            setSelectedSize(null);
+                            setActiveImageIndex(0);
+                          }}
+                          className="w-full bg-white/95 backdrop-blur-sm text-stone-900 py-3 font-medium text-xs tracking-widest uppercase hover:bg-stone-900 hover:text-white transition-colors border border-stone-200"
+                        >
+                          Ver detalles
+                        </button>
+                      </div>
+                      
+                      {/* Discount Badge */}
+                      {product.originalPrice && product.originalPrice > product.price && (
+                         <div className="absolute top-0 right-0 bg-stone-900 text-white text-[10px] font-semibold px-3 py-1.5 tracking-widest uppercase shadow-sm z-10">
+                            -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                         </div>
+                      )}
+                      
+                      {/* Sold out overlay */}
+                      {product.sizes && product.inventory && product.sizes.every(size => product.inventory![size] === 0) && (
+                         <div className="absolute top-4 left-4 bg-white/90 text-stone-900 text-[10px] font-medium px-2 py-1 tracking-widest hidden md:block z-10">
+                            AGOTADO
+                         </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-center text-center">
+                      <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1.5">{product.category} {product.type && `· ${product.type}`}</p>
+                      <h3 className="font-display text-[17px] text-stone-900 mb-2 leading-tight">{product.name}</h3>
+                      
+                      <div className="flex items-center gap-2 justify-center">
+                        <span className="font-medium text-stone-900 text-[15px]">${product.price.toLocaleString('es-AR')}</span>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <span className="text-xs text-stone-400 line-through decoration-stone-300 font-light">${product.originalPrice.toLocaleString('es-AR')}</span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
-              <div className="flex flex-col items-center text-center">
-                <p className="text-stone-500 text-[10px] uppercase tracking-[0.2em] mb-1.5">{product.category} {product.type && `· ${product.type}`}</p>
-                <h3 className="font-display text-[17px] text-stone-900 mb-2 leading-tight">{product.name}</h3>
-                
-                <div className="flex items-center gap-2 justify-center">
-                  <span className="font-medium text-stone-900 text-[15px]">${product.price.toLocaleString('es-AR')}</span>
-                  {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-xs text-stone-400 line-through decoration-stone-300 font-light">${product.originalPrice.toLocaleString('es-AR')}</span>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-            </div>
+            )}
 
             {/* Pagination Controls */}
-            {!isLoadingProducts && totalPages > 1 && (
+            {!isLoadingProducts && totalPages > 1 && !(activeCategory === 'Todo' && activeType === 'Todo' && activeSeason === 'Todas' && activeSize === 'Todo' && searchQuery === '' && currentPage === 1 && products.filter(p => p.season && p.season !== 'Todas').length > 0) && (
               <div className="flex justify-center items-center gap-2 mt-auto pt-8 border-t border-stone-200">
                 <button 
                   onClick={() => {
@@ -1323,6 +1552,16 @@ export default function App() {
                       >
                         <option value="">Seleccionar...</option>
                         {types.filter(t => t !== 'Todo').map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-500 mb-1">Cápsula / Temporada</label>
+                      <select
+                        value={editingProduct.season || 'Todas'}
+                        onChange={e => setEditingProduct({...editingProduct, season: e.target.value})}
+                        className="w-full border border-stone-200 p-2 text-sm outline-none focus:border-stone-500 bg-white"
+                      >
+                        {['Todas', 'Primavera', 'Verano', 'Otoño', 'Invierno'].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div>

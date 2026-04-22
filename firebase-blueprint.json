@@ -24,6 +24,7 @@
         "originalPrice": { "type": "number", "description": "Used for sales: if originalPrice > price, product is on sale" },
         "category": { "type": "string" },
         "type": { "type": "string" },
+        "season": { "type": "string" },
         "images": { "type": "array", "items": { "type": "string" } },
         "sizes": { "type": "array", "items": { "type": "string" } },
         "inventory": { "type": "object", "additionalProperties": { "type": "number" } },
